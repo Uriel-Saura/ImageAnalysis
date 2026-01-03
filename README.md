@@ -43,10 +43,24 @@ ImageAnalysis/
 │   ├── filtros_fourier.py     # Filtros (pasa-bajas, pasa-altas)
 │   ├── analisis_filtros.py    # Análisis de efectos de filtrado
 │   └── visualizador.py        # Visualización de imágenes
+├── HeatMap/                   # Módulo de Mapas de Calor
+│   ├── Main.py
+│   ├── interfaz_heatmap.py
+│   └── logica_heatmap.py
 ├── Morfologia/                # Módulo de Morfología
 │   ├── interfaz_morfologia.py
 │   ├── mostrar_todas_operaciones.py
 │   └── verificar_tipo_imagen.py
+├── Practica2/                 # Módulo de Ruido y Filtros
+│   ├── Main.py                # Punto de entrada
+│   ├── interfaz_practica2.py  # Interfaz gráfica completa
+│   ├── generacion_ruido.py    # Generación de ruido (sal y pimienta, gaussiano)
+│   ├── filtros_lineales.py    # Filtros paso altas y bajas
+│   ├── filtros_no_lineales.py # Filtros de orden
+│   ├── visualizador.py        # Funciones de visualización
+│   ├── ejemplo_uso.py         # Script de ejemplo
+│   ├── README.md              # Documentación del módulo
+│   └── GUIA_USUARIO.md        # Guía detallada de usuario
 ├── img/                       # Carpeta de imágenes
 └── requirements.txt           # Dependencias del proyecto
 ```
@@ -63,6 +77,23 @@ python Morfologia\interfaz_morfologia.py
 python Fourier\interfaz_fourier.py
 ```
 
+### Módulo de HeatMap
+```bash
+python HeatMap\Main.py
+```
+
+### Módulo Práctica 2 (Ruido y Filtros)
+```bash
+cd Practica2
+python Main.py
+```
+
+O ejecutar el ejemplo:
+```bash
+cd Practica2
+python ejemplo_uso.py
+```
+
 ## Funcionalidades
 
 ### Morfología
@@ -77,3 +108,28 @@ python Fourier\interfaz_fourier.py
 - Filtros pasa-bajas: Ideal, Gaussiano, Butterworth
 - Filtros pasa-altas: Ideal, Gaussiano, Butterworth
 - Análisis de efectos del filtrado (MSE, PSNR, SSIM)
+
+### HeatMap
+- Generación de mapas de calor
+- Visualización de distribución de intensidades
+- Análisis de zonas de interés
+
+### Práctica 2 - Ruido y Filtros
+#### Generación de Ruido:
+- Ruido sal y pimienta (configurable)
+- Ruido gaussiano (media y sigma ajustables)
+- Visualización de histogramas
+
+#### Filtros Lineales Paso Altas (Detección de Bordes):
+- Operadores de primer orden: Sobel, Prewitt, Roberts, Kirsch, Canny
+- Operadores de segundo orden: Laplacianos (clásico, 8 vecinos, direccionales)
+
+#### Filtros Lineales Paso Bajas (Suavizado):
+- Filtro promediador (blur)
+- Filtro promediador pesado
+- Filtro gaussiano
+- Filtro bilateral (preserva bordes)
+
+#### Filtros No Lineales (de Orden):
+- Filtros básicos: Mediana, Moda, Máximo, Mínimo
+- Filtros avanzados: Mediana adaptativa, Contraharmonic Mean, Mediana ponderada
