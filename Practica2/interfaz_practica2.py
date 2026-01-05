@@ -82,9 +82,6 @@ class InterfazPractica2:
         
         # Pestaña 4: Filtros No Lineales
         self.crear_pestana_filtros_no_lineales()
-        
-        # Pestaña 5: Visualización
-        self.crear_pestana_visualizacion()
     
     def crear_pestana_ruido(self):
         """Crea la pestaña de generación de ruido."""
@@ -122,6 +119,12 @@ class InterfazPractica2:
         ttk.Label(frame_gauss, textvariable=self.sigma_gauss).pack(side='left', padx=5)
         ttk.Button(frame_gauss, text="Aplicar", 
                   command=self.aplicar_ruido_gaussiano).pack(side='left', padx=5)
+        
+        # Botón para guardar imagen
+        frame_guardar = ttk.Frame(panel_controles)
+        frame_guardar.pack(fill='x', pady=10)
+        ttk.Button(frame_guardar, text="💾 Guardar Imagen con Ruido", 
+                  command=self.guardar_imagen).pack()
         
         # Área de visualización
         frame_visualizacion = ttk.Frame(frame)
@@ -181,6 +184,10 @@ class InterfazPractica2:
         ttk.Button(fila3, text="Laplaciano Diagonal Secundaria", 
                   command=lambda: self.aplicar_filtro(filtro_laplaciano_diagonal_secundaria)).pack(side='left', padx=3)
         
+        # Botón para guardar imagen
+        ttk.Button(panel_controles, text="💾 Guardar Imagen Filtrada", 
+                  command=self.guardar_imagen).pack(pady=10)
+        
         # Área de visualización - 3 imágenes horizontales
         frame_visualizacion = ttk.Frame(frame)
         frame_visualizacion.pack(fill='both', expand=True)
@@ -218,6 +225,12 @@ class InterfazPractica2:
                   command=self.aplicar_filtro_gaussiano).pack(side='left', padx=3)
         ttk.Button(frame_botones, text="Filtro Bilateral", 
                   command=lambda: self.aplicar_filtro(filtro_bilateral)).pack(side='left', padx=3)
+        
+        # Botón para guardar imagen
+        frame_guardar = ttk.Frame(panel_controles)
+        frame_guardar.pack(fill='x', pady=10)
+        ttk.Button(frame_guardar, text="💾 Guardar Imagen Filtrada", 
+                  command=self.guardar_imagen).pack()
         
         # Área de visualización - 3 imágenes horizontales
         frame_visualizacion = ttk.Frame(frame)
@@ -268,6 +281,12 @@ class InterfazPractica2:
         ttk.Button(frame_opcionales, text="Mediana Ponderada", 
                   command=self.aplicar_filtro_mediana_ponderada).pack(side='left', padx=3)
         
+        # Botón para guardar imagen
+        frame_guardar = ttk.Frame(panel_controles)
+        frame_guardar.pack(fill='x', pady=10)
+        ttk.Button(frame_guardar, text="💾 Guardar Imagen Filtrada", 
+                  command=self.guardar_imagen).pack()
+        
         # Área de visualización - 3 imágenes horizontales
         frame_visualizacion = ttk.Frame(frame)
         frame_visualizacion.pack(fill='both', expand=True)
@@ -276,28 +295,7 @@ class InterfazPractica2:
         self.canvas_nl_con_ruido = crear_canvas_matplotlib(frame_visualizacion, figsize=(4, 4))
         self.canvas_nl_procesada = crear_canvas_matplotlib(frame_visualizacion, figsize=(4, 4))
     
-    def crear_pestana_visualizacion(self):
-        """Crea la pestaña de visualización comparativa."""
-        frame = ttk.Frame(self.notebook, padding=10)
-        self.notebook.add(frame, text="Visualización")
-        
-        # Controles
-        panel_controles = ttk.LabelFrame(frame, text="Opciones de Visualización", padding=10)
-        panel_controles.pack(fill='x', pady=(0, 10))
-        
-        ttk.Button(panel_controles, text="Actualizar Visualización", 
-                  command=self.actualizar_visualizacion).pack(side='left', padx=5)
-        ttk.Button(panel_controles, text="Guardar Imagen Procesada", 
-                  command=self.guardar_imagen).pack(side='left', padx=5)
-        ttk.Button(panel_controles, text="Restablecer a Original", 
-                  command=self.restablecer_original).pack(side='left', padx=5)
-        
-        # Área de visualización
-        frame_visualizacion = ttk.Frame(frame)
-        frame_visualizacion.pack(fill='both', expand=True)
-        
-        self.canvas_vis_original = crear_canvas_matplotlib(frame_visualizacion, figsize=(6, 5))
-        self.canvas_vis_procesada = crear_canvas_matplotlib(frame_visualizacion, figsize=(6, 5))
+
     
     # ==================== MÉTODOS DE FUNCIONALIDAD ====================
     
@@ -340,11 +338,6 @@ class InterfazPractica2:
         
         # Pestaña de filtros no lineales - mostrar original en primer canvas
         mostrar_imagen_en_canvas(self.canvas_nl_original, self.imagen_original, "Original")
-        
-        # Pestaña de visualización
-        mostrar_imagen_en_canvas(self.canvas_vis_original, self.imagen_original, "Imagen Original")
-        if self.imagen_procesada is not None:
-            mostrar_imagen_en_canvas(self.canvas_vis_procesada, self.imagen_procesada, "Imagen Procesada")
     
     def actualizar_imagen_base_todas_pestanas(self):
         """Actualiza la imagen base (con ruido) en todas las pestañas de filtros."""
@@ -588,18 +581,6 @@ class InterfazPractica2:
         mostrar_imagen_en_canvas(self.canvas_nl_procesada, resultado, 
                                 f"Procesada")
     
-    def actualizar_visualizacion(self):
-        """Actualiza la pestaña de visualización con las imágenes actuales."""
-        if self.imagen_original is None:
-            messagebox.showwarning("Advertencia", "Primero carga una imagen")
-            return
-        
-        mostrar_imagen_en_canvas(self.canvas_vis_original, self.imagen_original, "Imagen Original")
-        
-        if self.imagen_procesada is not None:
-            mostrar_imagen_en_canvas(self.canvas_vis_procesada, self.imagen_procesada, 
-                                    "Imagen Procesada")
-    
     def guardar_imagen(self):
         """Guarda la imagen procesada."""
         if self.imagen_procesada is None:
@@ -616,17 +597,6 @@ class InterfazPractica2:
             cv2.imwrite(ruta, self.imagen_procesada)
             messagebox.showinfo("Éxito", f"Imagen guardada en: {ruta}")
     
-    def restablecer_original(self):
-        """Restablece la imagen procesada a la original."""
-        if self.imagen_original is None:
-            messagebox.showwarning("Advertencia", "Primero carga una imagen")
-            return
-        
-        self.imagen_procesada = self.imagen_original.copy()
-        self.actualizar_todas_vistas()
-        messagebox.showinfo("Éxito", "Imagen restablecida a la original")
-
-
 def iniciar_interfaz():
     """Inicia la interfaz gráfica."""
     root = tk.Tk()
