@@ -231,6 +231,10 @@ def filtro_promediador(imagen, tamano_kernel=5):
     """
     Aplica un filtro promediador (blur) simple.
     """
+    # Asegurar que el tamaño del kernel sea positivo
+    if tamano_kernel < 1:
+        tamano_kernel = 1
+    
     resultado = cv2.blur(imagen, (tamano_kernel, tamano_kernel))
     return resultado
 
@@ -256,6 +260,12 @@ def filtro_gaussiano(imagen, tamano_kernel=5, sigma=1.0):
     """
     Aplica un filtro gaussiano para suavizado.
     """
+    # Asegurar que el tamaño del kernel sea impar y positivo
+    if tamano_kernel < 1:
+        tamano_kernel = 1
+    if tamano_kernel % 2 == 0:
+        tamano_kernel += 1
+    
     resultado = cv2.GaussianBlur(imagen, (tamano_kernel, tamano_kernel), sigma)
     return resultado
 

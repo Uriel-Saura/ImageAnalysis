@@ -12,6 +12,12 @@ def filtro_mediana(imagen, tamano_kernel=5):
     Aplica un filtro de mediana.
     Útil para eliminar ruido sal y pimienta.
     """
+    # Asegurar que el tamaño del kernel sea impar y positivo
+    if tamano_kernel < 1:
+        tamano_kernel = 1
+    if tamano_kernel % 2 == 0:
+        tamano_kernel += 1
+    
     resultado = cv2.medianBlur(imagen, tamano_kernel)
     return resultado
 
@@ -85,6 +91,12 @@ def filtro_mediana_adaptativa(imagen, tamano_max=7):
     Aplica un filtro de mediana adaptativa.
     """
     resultado = imagen.copy()
+    
+    # Asegurar que tamano_max sea impar y al menos 3
+    if tamano_max < 3:
+        tamano_max = 3
+    if tamano_max % 2 == 0:
+        tamano_max += 1
     
     if len(imagen.shape) == 3:
         # Convertir a escala de grises para el procesamiento
