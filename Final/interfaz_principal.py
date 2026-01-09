@@ -19,7 +19,7 @@ class InterfazPrincipal:
     def __init__(self, root):
         self.root = root
         self.root.title("Sistema Integrado de Procesamiento de Imágenes")
-        self.root.geometry("900x750")
+        self.root.geometry("1100x800")
         self.root.configure(bg='#2c3e50')
         
         # Centrar ventana
@@ -31,8 +31,8 @@ class InterfazPrincipal:
     def centrar_ventana(self):
         """Centra la ventana en la pantalla"""
         self.root.update_idletasks()
-        width = 900
-        height = 750
+        width = 1100
+        height = 800
         x = (self.root.winfo_screenwidth() // 2) - (width // 2)
         y = (self.root.winfo_screenheight() // 2) - (height // 2)
         self.root.geometry(f'{width}x{height}+{x}+{y}')
@@ -62,73 +62,89 @@ class InterfazPrincipal:
             bg='#2c3e50',
             fg='#bdc3c7'
         )
-        subtitulo.pack(pady=(0, 25))
+        subtitulo.pack(pady=(0, 20))
         
-        # Frame para botones
+        # Frame para botones con grid
         botones_frame = tk.Frame(main_frame, bg='#2c3e50')
         botones_frame.pack(expand=True, fill='both', pady=10)
         
-        # ===== BOTON 1: IMAGEN DIGITAL =====
-        self.crear_boton(
+        # Configurar columnas del grid
+        botones_frame.columnconfigure(0, weight=1)
+        botones_frame.columnconfigure(1, weight=1)
+        
+        # ===== FILA 0 =====
+        # BOTON 1: IMAGEN DIGITAL (Columna 0)
+        self.crear_boton_grid(
             botones_frame,
             "1. Procesamiento Básico de Imágenes",
             "Conversión RGB→Grises, Binarización, Histogramas",
             '#3498db',
-            lambda: self.abrir_modulo('ImagenDigital')
+            lambda: self.abrir_modulo('ImagenDigital'),
+            0, 0
         )
         
-        # ===== BOTON 2: OPERACIONES =====
-        self.crear_boton(
+        # BOTON 2: OPERACIONES (Columna 1)
+        self.crear_boton_grid(
             botones_frame,
             "2. Operaciones sobre Imágenes",
             "Operaciones aritméticas, lógicas y con escalares",
             '#e74c3c',
-            lambda: self.abrir_modulo('Operaciones')
+            lambda: self.abrir_modulo('Operaciones'),
+            0, 1
         )
         
-        # ===== BOTON 3: SEGMENTACION =====
-        self.crear_boton(
+        # ===== FILA 1 =====
+        # BOTON 3: SEGMENTACION (Columna 0)
+        self.crear_boton_grid(
             botones_frame,
             "3. Técnicas de Segmentación",
             "Umbralización, Ecualización, Ajustes de histograma",
             '#9b59b6',
-            lambda: self.abrir_modulo('Segmentacion')
+            lambda: self.abrir_modulo('Segmentacion'),
+            1, 0
         )
         
-        # ===== BOTON 4: ANALISIS RUIDO =====
-        self.crear_boton(
+        # BOTON 4: ANALISIS RUIDO (Columna 1)
+        self.crear_boton_grid(
             botones_frame,
             "4. Análisis de Ruido y Filtros",
             "Generación de ruido, Filtros lineales y no lineales",
             '#f39c12',
-            lambda: self.abrir_modulo('AnalisisRuido')
+            lambda: self.abrir_modulo('AnalisisRuido'),
+            1, 1
         )
         
-        # ===== BOTON 5: MORFOLOGIA =====
-        self.crear_boton(
+        # ===== FILA 2 =====
+        # BOTON 5: MORFOLOGIA (Columna 0)
+        self.crear_boton_grid(
             botones_frame,
             "5. Operaciones Morfológicas",
             "Erosión, Dilatación, Apertura, Cierre, Gradientes",
             '#1abc9c',
-            lambda: self.abrir_modulo('Morfologia')
+            lambda: self.abrir_modulo('Morfologia'),
+            2, 0
         )
         
-        # ===== BOTON 6: FOURIER =====
-        self.crear_boton(
+        # BOTON 6: FOURIER (Columna 1)
+        self.crear_boton_grid(
             botones_frame,
             "6. Transformada de Fourier",
             "FFT, Filtros frecuenciales, Análisis DCT",
             '#e67e22',
-            lambda: self.abrir_modulo('Fourier')
+            lambda: self.abrir_modulo('Fourier'),
+            2, 1
         )
         
-        # ===== BOTON 7: HEATMAP =====
-        self.crear_boton(
+        # ===== FILA 3 =====
+        # BOTON 7: HEATMAP (Columna 0, centrado con columnspan)
+        self.crear_boton_grid(
             botones_frame,
             "7. Mapas de Calor",
             "Generación y visualización de heatmaps",
             '#c0392b',
-            lambda: self.abrir_modulo('HeatMap')
+            lambda: self.abrir_modulo('HeatMap'),
+            3, 0,
+            columnspan=2
         )
         
         # Separador
@@ -163,11 +179,15 @@ class InterfazPrincipal:
         footer.pack(pady=(10, 0))
     
     
-    def crear_boton(self, parent, titulo, descripcion, color, comando):
-        """Crea un botón de módulo manualmente"""
+    def crear_boton_grid(self, parent, titulo, descripcion, color, comando, fila, columna, columnspan=1):
+        """Crea un botón de módulo en una posición específica del grid"""
         # Frame contenedor
         frame = tk.Frame(parent, bg='#34495e', relief='raised', bd=2)
-        frame.pack(fill='x', pady=8, padx=10)
+        frame.grid(row=fila, column=columna, columnspan=columnspan, 
+                   padx=8, pady=8, sticky='nsew')
+        
+        # Configurar peso de las filas
+        parent.rowconfigure(fila, weight=1)
         
         # Frame interno
         frame_interno = tk.Frame(frame, bg='white')
@@ -185,7 +205,7 @@ class InterfazPrincipal:
         lbl_titulo = tk.Label(
             contenido,
             text=titulo,
-            font=('Helvetica', 12, 'bold'),
+            font=('Helvetica', 11, 'bold'),
             bg='white',
             fg='#2c3e50',
             anchor='w'
@@ -199,7 +219,8 @@ class InterfazPrincipal:
             font=('Helvetica', 9),
             bg='white',
             fg='#7f8c8d',
-            anchor='w'
+            anchor='w',
+            wraplength=280
         )
         lbl_desc.pack(fill='x', pady=(2, 8))
         
@@ -208,15 +229,15 @@ class InterfazPrincipal:
             contenido,
             text="▶ ABRIR MÓDULO",
             command=comando,
-            font=('Helvetica', 10, 'bold'),
+            font=('Helvetica', 9, 'bold'),
             bg=color,
             fg='white',
             activebackground=self.oscurecer_color(color),
             activeforeground='white',
             cursor='hand2',
             relief='flat',
-            padx=20,
-            pady=8
+            padx=15,
+            pady=6
         )
         btn.pack(anchor='w')
         
