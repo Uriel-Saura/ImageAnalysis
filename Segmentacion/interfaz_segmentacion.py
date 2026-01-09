@@ -27,6 +27,10 @@ from tecnicas_ajuste import (
     contraccion_histograma, expansion_histograma, expansion_histograma_percentil,
     ajuste_contraste_brillo, transformacion_logaritmica
 )
+from deteccion_objetos import (
+    detectar_objetos_binarizados, dibujar_contornos_con_info,
+    obtener_estadisticas_objetos, filtrar_objetos_por_area
+)
 
 
 class InterfazSegmentacion:
@@ -37,6 +41,8 @@ class InterfazSegmentacion:
         
         self.imagen_original = None
         self.imagen_procesada = None
+        self.contornos_detectados = None
+        self.propiedades_objetos = None
         
         self.crear_interfaz()
     
@@ -58,6 +64,8 @@ class InterfazSegmentacion:
                   command=self.cargar_imagen).pack(side=tk.LEFT, padx=5)
         ttk.Button(frame_botones, text="Guardar Resultado", 
                   command=self.guardar_imagen).pack(side=tk.LEFT, padx=5)
+        ttk.Button(frame_botones, text="Detectar Objetos", 
+                  command=self.detectar_objetos, style="Accent.TButton").pack(side=tk.LEFT, padx=5)
         ttk.Button(frame_botones, text="Reiniciar", 
                   command=self.reiniciar).pack(side=tk.LEFT, padx=5)
         
@@ -841,6 +849,151 @@ class InterfazSegmentacion:
         except Exception as e:
             messagebox.showerror("Error", f"Error en comparación: {str(e)}")
     
+    def detectar_objetos(self):
+        """Detecta objetos en la imagen procesada (debe ser binaria)"""
+        if self.imagen_procesada is None:
+            messagebox.showwarning("Advertencia", "Primero aplica una técnica de segmentación")
+            return
+        
+        try:
+            # Detectar objetos y calcular propiedades
+            self.contornos_detectados, self.propiedades_objetos = detectar_objetos_binarizados(
+                self.imagen_procesada
+            )
+            
+            if len(self.contornos_detectados) == 0:
+                messagebox.showinfo("Información", "No se detectaron objetos en la imagen")
+                return
+            
+            # Dibujar contornos sobre la imagen binarizada
+            imagen_con_contornos = dibujar_contornos_con_info(
+                self.imagen_procesada,
+                self.contornos_detectados,
+                self.propiedades_objetos,
+                mostrar_info=True
+            )
+            
+            # Actualizar layout y mostrar resultados
+            self.actualizar_layout_imagenes('comparacion')
+            self.mostrar_imagen(self.imagen_procesada, self.label_original)
+            self.mostrar_imagen(imagen_con_contornos, self.label_procesada)
+            
+            # Mostrar información en el área de texto
+            info = f"=== DETECCIÓN DE OBJETOS EN IMAGEN BINARIZADA ===\n\n"
+            info += f"Total de objetos detectados: {len(self.propiedades_objetos)}\n\n"
+            info += "=" * 60 + "\n"
+            
+            for prop in self.propiedades_objetos:
+                info += f"\n{'─' * 60}\n"
+                info += f"OBJETO #{prop['id']}\n"
+                info += f"{'─' * 60}\n"
+                info += f"Área:       {prop['area']:.2f} píxeles²\n"
+                info += f"Perímetro:  {prop['perimetro']:.2f} píxeles\n"
+                info += f"Centroide:  X={prop['centroide'][0]}, Y={prop['centroide'][1]}\n"
+                info += f"Dimensión:  {prop['rectangulo'][2]} x {prop['rectangulo'][3]} px\n"
+                info += f"Circularidad: {prop['circularidad']:.3f}\n"
+            
+            info += f"\n{'=' * 60}\n"
+            
+            self.info_text.delete('1.0', tk.END)
+            self.info_text.insert('1.0', info)
+            
+            # Crear ventana adicional con tabla de resultados
+            self.mostrar_ventana_deteccion(imagen_con_contornos)
+            
+            messagebox.showinfo("Éxito", 
+                f"Se detectaron {len(self.contornos_detectados)} objetos correctamente")
+            
+        except Exception as e:
+            messagebox.showerror("Error", f"Error en detección de objetos: {str(e)}")
+    
+    def mostrar_ventana_deteccion(self, imagen_con_contornos):
+        """Muestra una ventana adicional con la tabla de objetos detectados"""
+        ventana = tk.Toplevel(self.root)
+        ventana.title("Detección de Objetos - Mediciones")
+        ventana.geometry("900x600")
+        
+        # Frame principal
+        main_frame = ttk.Frame(ventana, padding=10)
+        main_frame.pack(fill=tk.BOTH, expand=True)
+        
+        # Título
+        titulo = ttk.Label(main_frame, text="Objetos Detectados - Área y Perímetro", 
+                          font=('Arial', 14, 'bold'))
+        titulo.pack(pady=(0, 10))
+        
+        # Frame para la imagen y tabla
+        content_frame = ttk.Frame(main_frame)
+        content_frame.pack(fill=tk.BOTH, expand=True)
+        
+        # Panel izquierdo - Imagen
+        left_frame = ttk.LabelFrame(content_frame, text="Imagen con Contornos", padding=10)
+        left_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 5))
+        
+        # Mostrar imagen con contornos
+        img_rgb = cv2.cvtColor(imagen_con_contornos, cv2.COLOR_BGR2RGB)
+        img_pil = Image.fromarray(img_rgb)
+        
+        # Redimensionar si es muy grande
+        max_size = 400
+        ratio = min(max_size/img_pil.width, max_size/img_pil.height)
+        if ratio < 1:
+            new_size = (int(img_pil.width * ratio), int(img_pil.height * ratio))
+            img_pil = img_pil.resize(new_size, Image.LANCZOS)
+        
+        img_tk = ImageTk.PhotoImage(img_pil)
+        label_img = ttk.Label(left_frame, image=img_tk)
+        label_img.image = img_tk
+        label_img.pack()
+        
+        # Panel derecho - Tabla
+        right_frame = ttk.LabelFrame(content_frame, text="Mediciones", padding=10)
+        right_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=(5, 0))
+        
+        # Crear Treeview para tabla
+        columns = ('ID', 'Área (px²)', 'Perímetro (px)')
+        tree = ttk.Treeview(right_frame, columns=columns, show='headings', height=15)
+        
+        # Configurar columnas
+        tree.heading('ID', text='ID')
+        tree.heading('Área (px²)', text='Área (px²)')
+        tree.heading('Perímetro (px)', text='Perímetro (px)')
+        
+        tree.column('ID', width=60, anchor='center')
+        tree.column('Área (px²)', width=120, anchor='center')
+        tree.column('Perímetro (px)', width=120, anchor='center')
+        
+        # Scrollbar para la tabla
+        scrollbar = ttk.Scrollbar(right_frame, orient=tk.VERTICAL, command=tree.yview)
+        tree.configure(yscrollcommand=scrollbar.set)
+        
+        # Insertar datos
+        for prop in self.propiedades_objetos:
+            tree.insert('', tk.END, values=(
+                prop['id'],
+                f"{prop['area']:.2f}",
+                f"{prop['perimetro']:.2f}"
+            ))
+        
+        tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        # Frame inferior - Resumen
+        bottom_frame = ttk.LabelFrame(main_frame, text="Resumen", padding=10)
+        bottom_frame.pack(fill=tk.X, pady=(10, 0))
+        
+        # Calcular totales
+        total_objetos = len(self.propiedades_objetos)
+        total_area = sum(prop['area'] for prop in self.propiedades_objetos)
+        total_perimetro = sum(prop['perimetro'] for prop in self.propiedades_objetos)
+        
+        resumen_text = f"Total de objetos: {total_objetos}  |  "
+        resumen_text += f"Área total: {total_area:.2f} px²  |  "
+        resumen_text += f"Perímetro total: {total_perimetro:.2f} px"
+        
+        label_resumen = ttk.Label(bottom_frame, text=resumen_text, font=('Arial', 10, 'bold'))
+        label_resumen.pack()
+    
     def guardar_imagen(self):
         """Guarda la imagen procesada"""
         if self.imagen_procesada is None:
@@ -860,6 +1013,8 @@ class InterfazSegmentacion:
         """Reinicia el estado de la aplicación"""
         self.imagen_original = None
         self.imagen_procesada = None
+        self.contornos_detectados = None
+        self.propiedades_objetos = None
         
         self.label_original.config(image='')
         self.label_procesada.config(image='')

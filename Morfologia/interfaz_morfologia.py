@@ -35,9 +35,10 @@ class InterfazMorfologia:
         
         # Variables para parámetros
         self.kernel_size = tk.IntVar(value=5)
+        self.umbral_binario = tk.IntVar(value=127)
         
-        # Diccionario unificado de operaciones disponibles (para cualquier tipo de imagen)
-        self.operaciones = {
+        # Diccionario de operaciones BINARIAS
+        self.operaciones_binarias = {
             'Erosión': self.aplicar_erosion,
             'Dilatación': self.aplicar_dilatacion,
             'Apertura': self.aplicar_apertura,
@@ -46,13 +47,21 @@ class InterfazMorfologia:
             'Adelgazamiento': self.aplicar_adelgazamiento,
             'Hit-or-Miss': self.aplicar_hit_or_miss,
             'Esqueleto': self.aplicar_esqueleto,
+            'Negación': self.aplicar_negacion,
+        }
+        
+        # Diccionario de operaciones EN LATICES (Escala de grises)
+        self.operaciones_latices = {
+            'Erosión': self.aplicar_erosion,
+            'Dilatación': self.aplicar_dilatacion,
+            'Apertura': self.aplicar_apertura,
+            'Cierre': self.aplicar_cierre,
             'Gradiente Simétrico': self.aplicar_grad_simetrico,
             'Gradiente Externo': self.aplicar_grad_externo,
             'Gradiente Interno': self.aplicar_grad_interno,
             'Top Hat': self.aplicar_top_hat,
             'Black Hat': self.aplicar_black_hat,
             'Filtro Combinado': self.aplicar_filtro_combinado,
-            'Negación': self.aplicar_negacion,
         }
         
         self.crear_interfaz()
@@ -77,9 +86,35 @@ class InterfazMorfologia:
         frame_principal = tk.Frame(self.root, bg='#f0f0f0')
         frame_principal.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
         
-        # Columna izquierda: Carga de imágenes y parámetros
-        frame_izquierda = tk.Frame(frame_principal, bg='#f0f0f0', width=400)
-        frame_izquierda.pack(side=tk.LEFT, fill=tk.BOTH, padx=(0, 10))
+        # Columna izquierda con scrollbar: Carga de imágenes y parámetros
+        frame_izquierda_container = tk.Frame(frame_principal, bg='#f0f0f0', width=420)
+        frame_izquierda_container.pack(side=tk.LEFT, fill=tk.BOTH, padx=(0, 10))
+        
+        # Crear canvas y scrollbar para el panel izquierdo
+        canvas_izquierdo = tk.Canvas(frame_izquierda_container, bg='#f0f0f0', width=400)
+        scrollbar_izquierdo = tk.Scrollbar(frame_izquierda_container, orient="vertical", command=canvas_izquierdo.yview)
+        
+        # Frame scrollable dentro del canvas
+        frame_izquierda = tk.Frame(canvas_izquierdo, bg='#f0f0f0')
+        
+        # Configurar el scrolling
+        frame_izquierda.bind(
+            "<Configure>",
+            lambda e: canvas_izquierdo.configure(scrollregion=canvas_izquierdo.bbox("all"))
+        )
+        
+        canvas_izquierdo.create_window((0, 0), window=frame_izquierda, anchor="nw")
+        canvas_izquierdo.configure(yscrollcommand=scrollbar_izquierdo.set)
+        
+        # Empaquetar canvas y scrollbar
+        canvas_izquierdo.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar_izquierdo.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        # Habilitar scroll con la rueda del mouse
+        def _on_mousewheel(event):
+            canvas_izquierdo.yview_scroll(int(-1*(event.delta/120)), "units")
+        
+        canvas_izquierdo.bind_all("<MouseWheel>", _on_mousewheel)
         
         # Columna derecha: Visualización de resultados
         frame_derecha = tk.Frame(frame_principal, bg='white')
@@ -88,11 +123,17 @@ class InterfazMorfologia:
         # ===== SECCIÓN: CARGA DE IMAGEN =====
         self.crear_seccion_carga_imagen(frame_izquierda)
         
+        # ===== SECCIÓN: CONVERSIÓN A BINARIA =====
+        self.crear_seccion_conversion_binaria(frame_izquierda)
+        
         # ===== SECCIÓN: PARÁMETROS =====
         self.crear_seccion_parametros(frame_izquierda)
         
-        # ===== SECCIÓN: OPERACIONES =====
-        self.crear_seccion_operaciones(frame_izquierda)
+        # ===== SECCIÓN: OPERACIONES BINARIAS =====
+        self.crear_seccion_operaciones_binarias(frame_izquierda)
+        
+        # ===== SECCIÓN: OPERACIONES EN LATICES =====
+        self.crear_seccion_operaciones_latices(frame_izquierda)
         
         # ===== SECCIÓN: VISUALIZACIÓN =====
         self.crear_seccion_visualizacion(frame_derecha)
@@ -143,6 +184,67 @@ class InterfazMorfologia:
         )
         self.label_imagen.pack(pady=5)
     
+    def crear_seccion_conversion_binaria(self, parent):
+        """Crea la sección para convertir imagen a binaria"""
+        frame = tk.LabelFrame(
+            parent, 
+            text="Conversión a Binaria",
+            font=('Arial', 11, 'bold'),
+            bg='#fff3cd',
+            fg='#856404',
+            padx=10,
+            pady=10
+        )
+        frame.pack(fill=tk.X, pady=(0, 10))
+        
+        # Slider para el umbral
+        label_umbral = tk.Label(
+            frame,
+            text="Umbral de binarización:",
+            font=('Arial', 10),
+            bg='#fff3cd'
+        )
+        label_umbral.pack(anchor=tk.W, pady=(5, 0))
+        
+        frame_umbral = tk.Frame(frame, bg='#fff3cd')
+        frame_umbral.pack(fill=tk.X, pady=5)
+        
+        scale_umbral = tk.Scale(
+            frame_umbral,
+            from_=0,
+            to=255,
+            orient=tk.HORIZONTAL,
+            variable=self.umbral_binario,
+            bg='#fff3cd',
+            font=('Arial', 9)
+        )
+        scale_umbral.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        
+        # Botones de conversión
+        btn_convertir = tk.Button(
+            frame,
+            text="Convertir a Binaria",
+            command=self.convertir_a_binaria,
+            bg='#ffc107',
+            fg='black',
+            font=('Arial', 9, 'bold'),
+            relief=tk.RAISED,
+            cursor='hand2'
+        )
+        btn_convertir.pack(pady=5, fill=tk.X)
+        
+        btn_guardar_binaria = tk.Button(
+            frame,
+            text="Guardar Imagen Binaria",
+            command=self.guardar_imagen_binaria,
+            bg='#28a745',
+            fg='white',
+            font=('Arial', 9, 'bold'),
+            relief=tk.RAISED,
+            cursor='hand2'
+        )
+        btn_guardar_binaria.pack(pady=5, fill=tk.X)
+    
     def crear_seccion_parametros(self, parent):
         """Crea la sección de parámetros del kernel"""
         frame = tk.LabelFrame(
@@ -179,29 +281,64 @@ class InterfazMorfologia:
         )
         scale_size.pack(side=tk.LEFT, fill=tk.X, expand=True)
     
-    def crear_seccion_operaciones(self, parent):
-        """Crea la sección de operaciones morfológicas"""
+    def crear_seccion_operaciones_binarias(self, parent):
+        """Crea la sección de operaciones morfológicas BINARIAS"""
         frame = tk.LabelFrame(
             parent,
-            text="Operaciones Morfologicas",
+            text="Operaciones Morfológicas BINARIAS",
             font=('Arial', 11, 'bold'),
-            bg='#e8f4f8',
-            fg='#2c3e50',
+            bg='#ffe0e0',
+            fg='#c0392b',
             padx=10,
             pady=10
         )
         frame.pack(fill=tk.X, pady=(0, 10))
         
-        # Usar las claves del diccionario de operaciones
+        # Usar las claves del diccionario de operaciones binarias
         col = 0
         row = 0
         
-        for op in self.operaciones.keys():
+        for op in self.operaciones_binarias.keys():
             btn = tk.Button(
                 frame,
                 text=op,
-                command=lambda o=op: self.ejecutar_operacion_ambas(o),
-                bg='#3498db',
+                command=lambda o=op: self.ejecutar_operacion('binaria', o),
+                bg='#e74c3c',
+                fg='white',
+                font=('Arial', 9),
+                width=20,
+                cursor='hand2'
+            )
+            btn.grid(row=row, column=col, padx=5, pady=3, sticky='ew')
+            
+            col += 1
+            if col > 1:  # 2 columnas
+                col = 0
+                row += 1
+    
+    def crear_seccion_operaciones_latices(self, parent):
+        """Crea la sección de operaciones morfológicas EN LATICES (Escala de grises)"""
+        frame = tk.LabelFrame(
+            parent,
+            text="Operaciones Morfológicas EN LATICES (Escala de Grises)",
+            font=('Arial', 11, 'bold'),
+            bg='#d4edda',
+            fg='#155724',
+            padx=10,
+            pady=10
+        )
+        frame.pack(fill=tk.X, pady=(0, 10))
+        
+        # Usar las claves del diccionario de operaciones en latices
+        col = 0
+        row = 0
+        
+        for op in self.operaciones_latices.keys():
+            btn = tk.Button(
+                frame,
+                text=op,
+                command=lambda o=op: self.ejecutar_operacion('latices', o),
+                bg='#28a745',
                 fg='white',
                 font=('Arial', 9),
                 width=20,
@@ -300,6 +437,75 @@ class InterfazMorfologia:
             try:
                 cv2.imwrite(ruta, self.imagen_resultado)
                 messagebox.showinfo("Éxito", f"Imagen guardada correctamente:\n{os.path.basename(ruta)}")
+            except Exception as e:
+                messagebox.showerror("Error", f"Error al guardar la imagen:\n{str(e)}")
+    
+    def convertir_a_binaria(self):
+        """Convierte la imagen cargada a binaria usando el umbral seleccionado"""
+        if self.imagen is None:
+            messagebox.showwarning("Advertencia", "Debe cargar una imagen primero")
+            return
+        
+        try:
+            umbral = self.umbral_binario.get()
+            
+            # Aplicar umbralización
+            _, imagen_binaria = cv2.threshold(self.imagen, umbral, 255, cv2.THRESH_BINARY)
+            
+            # Actualizar la imagen actual
+            self.imagen = imagen_binaria
+            self.tipo_imagen = 'binaria'
+            
+            # Actualizar label
+            self.label_imagen.config(
+                text=f"Imagen convertida a BINARIA\n{self.imagen.shape[1]}x{self.imagen.shape[0]} px\nUmbral: {umbral}",
+                fg='#c0392b'
+            )
+            
+            # Visualizar el resultado
+            self.visualizar_conversion_binaria(imagen_binaria, umbral)
+            
+            messagebox.showinfo("Éxito", f"Imagen convertida a binaria con umbral {umbral}")
+            
+        except Exception as e:
+            messagebox.showerror("Error", f"Error al convertir a binaria:\n{str(e)}")
+    
+    def guardar_imagen_binaria(self):
+        """Guarda la imagen actual si es binaria"""
+        if self.imagen is None:
+            messagebox.showwarning("Advertencia", "No hay imagen cargada")
+            return
+        
+        if self.tipo_imagen != 'binaria':
+            respuesta = messagebox.askyesno(
+                "Advertencia",
+                "La imagen actual no es binaria.\n¿Desea convertirla a binaria antes de guardar?"
+            )
+            if respuesta:
+                self.convertir_a_binaria()
+            else:
+                return
+        
+        # Sugerir nombre de archivo
+        nombre_sugerido = "imagen_binaria.png"
+        
+        ruta = filedialog.asksaveasfilename(
+            title="Guardar Imagen Binaria",
+            defaultextension=".png",
+            initialfile=nombre_sugerido,
+            filetypes=[
+                ("PNG", "*.png"),
+                ("JPEG", "*.jpg"),
+                ("BMP", "*.bmp"),
+                ("TIFF", "*.tiff"),
+                ("Todos los archivos", "*.*")
+            ]
+        )
+        
+        if ruta:
+            try:
+                cv2.imwrite(ruta, self.imagen)
+                messagebox.showinfo("Éxito", f"Imagen binaria guardada correctamente:\n{os.path.basename(ruta)}")
             except Exception as e:
                 messagebox.showerror("Error", f"Error al guardar la imagen:\n{str(e)}")
     
@@ -425,6 +631,44 @@ class InterfazMorfologia:
     
     # ===== MÉTODOS DE EJECUCIÓN =====
     
+    def ejecutar_operacion(self, tipo_operacion, operacion):
+        """Ejecuta una operación morfológica según el tipo (binaria o latices)"""
+        if self.imagen is None:
+            messagebox.showwarning("Advertencia", "Debe cargar una imagen primero")
+            return
+        
+        try:
+            # Seleccionar el diccionario correcto según el tipo
+            if tipo_operacion == 'binaria':
+                diccionario_ops = self.operaciones_binarias
+                tipo_texto = "BINARIA"
+            else:  # latices
+                diccionario_ops = self.operaciones_latices
+                tipo_texto = "LATICES (Escala de Grises)"
+            
+            # Verificar que la operación existe en el diccionario
+            if operacion not in diccionario_ops:
+                messagebox.showerror("Error", f"Operación '{operacion}' no disponible para {tipo_texto}")
+                return
+            
+            # Aplicar la operación
+            resultado = diccionario_ops[operacion](self.imagen)
+            
+            # Guardar el resultado y el nombre de la operación
+            self.imagen_resultado = resultado
+            self.nombre_operacion = operacion.replace(' ', '_').replace('ó', 'o').replace('é', 'e').replace('í', 'i')
+            
+            # Visualizar
+            self.visualizar_resultado_simple(
+                self.imagen, 
+                resultado, 
+                f"{tipo_texto} - {operacion}", 
+                operacion
+            )
+            
+        except Exception as e:
+            messagebox.showerror("Error", f"Error al aplicar {operacion}:\n{str(e)}")
+    
     def ejecutar_operacion_ambas(self, operacion):
         """Ejecuta una operación morfológica sobre la imagen cargada"""
         if self.imagen is None:
@@ -445,6 +689,42 @@ class InterfazMorfologia:
             
         except Exception as e:
             messagebox.showerror("Error", f"Error al aplicar {operacion}:\n{str(e)}")
+    
+    def visualizar_conversion_binaria(self, imagen_binaria, umbral):
+        """Visualiza la conversión a imagen binaria"""
+        # Limpiar el frame anterior
+        for widget in self.frame_canvas.winfo_children():
+            widget.destroy()
+        
+        # Crear figura de matplotlib
+        fig, axes = plt.subplots(1, 3, figsize=(14, 5))
+        fig.suptitle(f'Conversión a Imagen Binaria (Umbral: {umbral})', fontsize=14, fontweight='bold')
+        
+        # Imagen original
+        axes[0].imshow(self.imagen, cmap='gray')
+        axes[0].set_title('Imagen Original', fontsize=12, fontweight='bold')
+        axes[0].axis('off')
+        
+        # Imagen binaria
+        axes[1].imshow(imagen_binaria, cmap='gray')
+        axes[1].set_title('Imagen Binaria', fontsize=12, fontweight='bold', color='red')
+        axes[1].axis('off')
+        
+        # Histograma con línea de umbral
+        axes[2].hist(self.imagen.ravel(), bins=256, range=(0, 256), color='gray', alpha=0.7)
+        axes[2].axvline(x=umbral, color='red', linestyle='--', linewidth=2, label=f'Umbral: {umbral}')
+        axes[2].set_title('Histograma y Umbral', fontsize=12, fontweight='bold')
+        axes[2].set_xlabel('Intensidad')
+        axes[2].set_ylabel('Frecuencia')
+        axes[2].legend()
+        axes[2].grid(True, alpha=0.3)
+        
+        plt.tight_layout()
+        
+        # Integrar matplotlib en tkinter
+        canvas = FigureCanvasTkAgg(fig, master=self.frame_canvas)
+        canvas.draw()
+        canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
     
     def visualizar_resultado_simple(self, imagen_original, imagen_resultado, titulo, operacion):
         """Visualiza una sola imagen con su resultado"""
