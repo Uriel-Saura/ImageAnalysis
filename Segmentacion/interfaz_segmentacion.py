@@ -321,7 +321,9 @@ class InterfazSegmentacion:
         
         self.label_original = ttk.Label(self.frame_imgs)
         self.label_procesada = ttk.Label(self.frame_imgs)
-        self.label_histograma = ttk.Label(self.frame_imgs)
+        
+        # Frame para histogramas
+        self.frame_histograma = ttk.Frame(self.frame_imgs)
         
         self.actualizar_layout_imagenes()
     
@@ -342,7 +344,11 @@ class InterfazSegmentacion:
             ttk.Label(self.frame_imgs, text="Procesada", font=('Arial', 10, 'bold')).grid(row=0, column=1)
             self.label_procesada.grid(row=1, column=1, padx=5, pady=5)
             
-            self.frame_imgs.grid_rowconfigure(1, weight=1)
+            ttk.Label(self.frame_imgs, text="Histogramas", font=('Arial', 10, 'bold')).grid(row=2, column=0, columnspan=2, pady=(10,0))
+            self.frame_histograma.grid(row=3, column=0, columnspan=2, padx=5, pady=5, sticky='nsew')
+            
+            self.frame_imgs.grid_rowconfigure(1, weight=2)
+            self.frame_imgs.grid_rowconfigure(3, weight=1)
             self.frame_imgs.grid_columnconfigure(0, weight=1)
             self.frame_imgs.grid_columnconfigure(1, weight=1)
     
@@ -386,6 +392,51 @@ class InterfazSegmentacion:
         label.config(image=imagen_tk)
         label.image = imagen_tk
     
+    def mostrar_histogramas_comparacion(self, img_original, img_procesada):
+        """Muestra histogramas comparativos de las imágenes original y procesada"""
+        # Limpiar frame de histograma
+        for widget in self.frame_histograma.winfo_children():
+            widget.destroy()
+        
+        # Convertir a escala de grises si es necesario
+        if len(img_original.shape) == 3:
+            img_orig_gray = cv2.cvtColor(img_original, cv2.COLOR_BGR2GRAY)
+        else:
+            img_orig_gray = img_original
+        
+        if len(img_procesada.shape) == 3:
+            img_proc_gray = cv2.cvtColor(img_procesada, cv2.COLOR_BGR2GRAY)
+        else:
+            img_proc_gray = img_procesada
+        
+        # Crear figura de matplotlib
+        fig = Figure(figsize=(10, 3), dpi=80)
+        
+        # Histograma original
+        ax1 = fig.add_subplot(121)
+        hist_orig = cv2.calcHist([img_orig_gray], [0], None, [256], [0, 256])
+        ax1.plot(hist_orig, color='blue')
+        ax1.set_title('Histograma Original')
+        ax1.set_xlabel('Nivel de gris')
+        ax1.set_ylabel('Frecuencia')
+        ax1.grid(True, alpha=0.3)
+        
+        # Histograma procesado
+        ax2 = fig.add_subplot(122)
+        hist_proc = cv2.calcHist([img_proc_gray], [0], None, [256], [0, 256])
+        ax2.plot(hist_proc, color='red')
+        ax2.set_title('Histograma Procesado')
+        ax2.set_xlabel('Nivel de gris')
+        ax2.set_ylabel('Frecuencia')
+        ax2.grid(True, alpha=0.3)
+        
+        fig.tight_layout()
+        
+        # Mostrar en el frame
+        canvas = FigureCanvasTkAgg(fig, master=self.frame_histograma)
+        canvas.draw()
+        canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+    
     def aplicar_umbralizacion(self, metodo):
         """Aplica un método de umbralización"""
         if self.imagen_original is None:
@@ -416,6 +467,7 @@ class InterfazSegmentacion:
             self.actualizar_layout_imagenes('comparacion')
             self.mostrar_imagen(self.imagen_original, self.label_original)
             self.mostrar_imagen(resultado, self.label_procesada)
+            self.mostrar_histogramas_comparacion(self.imagen_original, resultado)
             
             self.info_text.delete('1.0', tk.END)
             self.info_text.insert('1.0', info)
@@ -440,6 +492,7 @@ class InterfazSegmentacion:
             self.actualizar_layout_imagenes('comparacion')
             self.mostrar_imagen(self.imagen_original, self.label_original)
             self.mostrar_imagen(resultado, self.label_procesada)
+            self.mostrar_histogramas_comparacion(self.imagen_original, resultado)
             
             self.info_text.delete('1.0', tk.END)
             self.info_text.insert('1.0', info)
@@ -465,6 +518,7 @@ class InterfazSegmentacion:
             self.actualizar_layout_imagenes('comparacion')
             self.mostrar_imagen(self.imagen_original, self.label_original)
             self.mostrar_imagen(resultado, self.label_procesada)
+            self.mostrar_histogramas_comparacion(self.imagen_original, resultado)
             
             self.info_text.delete('1.0', tk.END)
             self.info_text.insert('1.0', info)
@@ -498,6 +552,7 @@ class InterfazSegmentacion:
             self.actualizar_layout_imagenes('comparacion')
             self.mostrar_imagen(self.imagen_original, self.label_original)
             self.mostrar_imagen(resultado, self.label_procesada)
+            self.mostrar_histogramas_comparacion(self.imagen_original, resultado)
             
         except Exception as e:
             messagebox.showerror("Error", f"Error en ecualización: {str(e)}")
@@ -516,6 +571,7 @@ class InterfazSegmentacion:
             self.actualizar_layout_imagenes('comparacion')
             self.mostrar_imagen(self.imagen_original, self.label_original)
             self.mostrar_imagen(resultado, self.label_procesada)
+            self.mostrar_histogramas_comparacion(self.imagen_original, resultado)
             
         except Exception as e:
             messagebox.showerror("Error", f"Error en gamma: {str(e)}")
@@ -534,6 +590,7 @@ class InterfazSegmentacion:
             self.actualizar_layout_imagenes('comparacion')
             self.mostrar_imagen(self.imagen_original, self.label_original)
             self.mostrar_imagen(resultado, self.label_procesada)
+            self.mostrar_histogramas_comparacion(self.imagen_original, resultado)
             
         except Exception as e:
             messagebox.showerror("Error", f"Error en desplazamiento: {str(e)}")
@@ -552,6 +609,7 @@ class InterfazSegmentacion:
             self.actualizar_layout_imagenes('comparacion')
             self.mostrar_imagen(self.imagen_original, self.label_original)
             self.mostrar_imagen(resultado, self.label_procesada)
+            self.mostrar_histogramas_comparacion(self.imagen_original, resultado)
             
         except Exception as e:
             messagebox.showerror("Error", f"Error en contracción: {str(e)}")
@@ -574,6 +632,7 @@ class InterfazSegmentacion:
             self.actualizar_layout_imagenes('comparacion')
             self.mostrar_imagen(self.imagen_original, self.label_original)
             self.mostrar_imagen(resultado, self.label_procesada)
+            self.mostrar_histogramas_comparacion(self.imagen_original, resultado)
             
         except Exception as e:
             messagebox.showerror("Error", f"Error en ajuste: {str(e)}")
@@ -592,6 +651,7 @@ class InterfazSegmentacion:
             self.actualizar_layout_imagenes('comparacion')
             self.mostrar_imagen(self.imagen_original, self.label_original)
             self.mostrar_imagen(resultado, self.label_procesada)
+            self.mostrar_histogramas_comparacion(self.imagen_original, resultado)
             
         except Exception as e:
             messagebox.showerror("Error", f"Error en potencia: {str(e)}")
