@@ -2,7 +2,9 @@
 Interfaz Gráfica para Procesamiento Básico de Imágenes Digitales
 - Conversión RGB a escala de grises
 - Binarización con umbral fijo y automático
-- Visualización de histogramas
+- Separación de canales RGB
+- Conversión entre modelos de color (RGB, CMY, YIQ, HSI, HSV)
+- Visualización de histogramas con propiedades estadísticas
 """
 
 import tkinter as tk
@@ -18,7 +20,15 @@ from procesamiento_basico import (
     rgb_a_grises,
     binarizacion_umbral_fijo,
     binarizacion_umbral_otsu,
-    calcular_histograma
+    calcular_histograma,
+    separar_canales_rgb,
+    separar_canales_rgb_visualizar,
+    calcular_histogramas_rgb,
+    propiedades_histograma,
+    rgb_a_cmy,
+    rgb_a_yiq,
+    rgb_a_hsi,
+    rgb_a_hsv
 )
 
 
@@ -26,7 +36,7 @@ class InterfazImagenDigital:
     def __init__(self, root):
         self.root = root
         self.root.title("Procesamiento Básico de Imágenes Digitales")
-        self.root.geometry("1400x800")
+        self.root.geometry("1600x900")
         
         self.imagen_original = None
         self.imagen_grises = None
@@ -56,21 +66,70 @@ class InterfazImagenDigital:
         frame_contenido = ttk.Frame(main_container)
         frame_contenido.pack(fill=tk.BOTH, expand=True)
         
-        # Panel izquierdo - Operaciones
-        panel_izquierdo = ttk.LabelFrame(frame_contenido, text="Operaciones", padding=10)
-        panel_izquierdo.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 10))
+        # Panel izquierdo con scroll - Operaciones
+        frame_izq_container = ttk.Frame(frame_contenido)
+        frame_izq_container.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 10))
         
-        # Conversión a escala de grises
+        # Canvas con scrollbar
+        canvas_izq = tk.Canvas(frame_izq_container, width=380, bg='#f0f0f0')
+        scrollbar_izq = ttk.Scrollbar(frame_izq_container, orient="vertical", command=canvas_izq.yview)
+        
+        panel_izquierdo = ttk.Frame(canvas_izq)
+        
+        panel_izquierdo.bind(
+            "<Configure>",
+            lambda e: canvas_izq.configure(scrollregion=canvas_izq.bbox("all"))
+        )
+        
+        canvas_izq.create_window((0, 0), window=panel_izquierdo, anchor="nw")
+        canvas_izq.configure(yscrollcommand=scrollbar_izq.set)
+        
+        canvas_izq.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar_izq.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        # Scroll con rueda del mouse
+        def _on_mousewheel(event):
+            canvas_izq.yview_scroll(int(-1*(event.delta/120)), "units")
+        canvas_izq.bind_all("<MouseWheel>", _on_mousewheel)
+        
+        # === SECCIÓN 1: CONVERSIÓN A GRISES ===
         ttk.Label(panel_izquierdo, text="1. Conversión a Escala de Grises", 
                  font=('Arial', 10, 'bold')).pack(pady=(10, 5))
         
         ttk.Button(panel_izquierdo, text="Convertir a Grises",
-                  command=self.convertir_a_grises, width=30).pack(fill=tk.X, padx=10, pady=5)
+                  command=self.convertir_a_grises, width=35).pack(fill=tk.X, padx=10, pady=5)
         
         ttk.Separator(panel_izquierdo, orient='horizontal').pack(fill=tk.X, pady=15)
         
-        # Binarización
-        ttk.Label(panel_izquierdo, text="2. Binarización", 
+        # === SECCIÓN 2: SEPARACIÓN DE CANALES ===
+        ttk.Label(panel_izquierdo, text="2. Separación de Canales RGB", 
+                 font=('Arial', 10, 'bold')).pack(pady=(10, 5))
+        
+        ttk.Button(panel_izquierdo, text="Separar Canales RGB",
+                  command=self.separar_canales, width=35).pack(fill=tk.X, padx=10, pady=5)
+        
+        ttk.Separator(panel_izquierdo, orient='horizontal').pack(fill=tk.X, pady=15)
+        
+        # === SECCIÓN 3: MODELOS DE COLOR ===
+        ttk.Label(panel_izquierdo, text="3. Modelos de Color", 
+                 font=('Arial', 10, 'bold')).pack(pady=(10, 5))
+        
+        frame_modelos = ttk.Frame(panel_izquierdo)
+        frame_modelos.pack(fill=tk.X, padx=10, pady=5)
+        
+        ttk.Button(frame_modelos, text="CMY", command=lambda: self.convertir_modelo('CMY'),
+                  width=11).grid(row=0, column=0, padx=2, pady=2)
+        ttk.Button(frame_modelos, text="YIQ", command=lambda: self.convertir_modelo('YIQ'),
+                  width=11).grid(row=0, column=1, padx=2, pady=2)
+        ttk.Button(frame_modelos, text="HSI", command=lambda: self.convertir_modelo('HSI'),
+                  width=11).grid(row=1, column=0, padx=2, pady=2)
+        ttk.Button(frame_modelos, text="HSV", command=lambda: self.convertir_modelo('HSV'),
+                  width=11).grid(row=1, column=1, padx=2, pady=2)
+        
+        ttk.Separator(panel_izquierdo, orient='horizontal').pack(fill=tk.X, pady=15)
+        
+        # === SECCIÓN 4: BINARIZACIÓN ===
+        ttk.Label(panel_izquierdo, text="4. Binarización", 
                  font=('Arial', 10, 'bold')).pack(pady=(10, 5))
         
         # Umbral fijo
@@ -89,7 +148,7 @@ class InterfazImagenDigital:
         scale_umbral.pack(side=tk.LEFT, fill=tk.X, expand=True)
         
         ttk.Button(panel_izquierdo, text="Aplicar Umbral Fijo",
-                  command=self.aplicar_umbral_fijo, width=30).pack(fill=tk.X, padx=10, pady=5)
+                  command=self.aplicar_umbral_fijo, width=35).pack(fill=tk.X, padx=10, pady=5)
         
         ttk.Separator(panel_izquierdo, orient='horizontal').pack(fill=tk.X, pady=10)
         
@@ -97,7 +156,7 @@ class InterfazImagenDigital:
         ttk.Label(panel_izquierdo, text="Umbral Automático (Otsu):").pack(pady=(5, 2))
         
         ttk.Button(panel_izquierdo, text="Aplicar Umbral Automático",
-                  command=self.aplicar_umbral_otsu, width=30).pack(fill=tk.X, padx=10, pady=5)
+                  command=self.aplicar_umbral_otsu, width=35).pack(fill=tk.X, padx=10, pady=5)
         
         self.label_umbral_calculado = ttk.Label(panel_izquierdo, text="", 
                                                font=('Arial', 9, 'italic'))
@@ -105,12 +164,20 @@ class InterfazImagenDigital:
         
         ttk.Separator(panel_izquierdo, orient='horizontal').pack(fill=tk.X, pady=15)
         
-        # Histogramas
-        ttk.Label(panel_izquierdo, text="3. Visualización", 
+        # === SECCIÓN 5: HISTOGRAMAS ===
+        ttk.Label(panel_izquierdo, text="5. Análisis de Histogramas", 
                  font=('Arial', 10, 'bold')).pack(pady=(10, 5))
         
-        ttk.Button(panel_izquierdo, text="Mostrar Histogramas",
-                  command=self.mostrar_histogramas, width=30).pack(fill=tk.X, padx=10, pady=5)
+        ttk.Button(panel_izquierdo, text="Histograma de Grises",
+                  command=self.mostrar_histograma_grises, width=35).pack(fill=tk.X, padx=10, pady=5)
+        
+        ttk.Button(panel_izquierdo, text="Histogramas RGB",
+                  command=self.mostrar_histogramas_rgb, width=35).pack(fill=tk.X, padx=10, pady=5)
+        
+        ttk.Button(panel_izquierdo, text="Propiedades del Histograma",
+                  command=self.mostrar_propiedades_histograma, width=35).pack(fill=tk.X, padx=10, pady=5)
+        
+        ttk.Separator(panel_izquierdo, orient='horizontal').pack(fill=tk.X, pady=15)
         
         # Panel derecho - Visualización
         panel_derecho = ttk.LabelFrame(frame_contenido, text="Visualización", padding=10)
@@ -190,9 +257,17 @@ class InterfazImagenDigital:
             self.imagen_procesada = None
             self.label_umbral_calculado.config(text="")
             
-            # Mostrar imagen original
-            self.mostrar_imagen(self.imagen_original, self.label_procesada)
+            # Limpiar frame de histogramas
+            for widget in self.frame_histograma.winfo_children():
+                widget.destroy()
+            
+            # Actualizar layout y mostrar imagen original
             self.actualizar_layout('simple')
+            self.mostrar_imagen(self.imagen_original, self.label_procesada)
+            
+            # Forzar actualización de la interfaz
+            self.root.update_idletasks()
+            
             messagebox.showinfo("Éxito", "Imagen cargada correctamente")
     
     def mostrar_imagen(self, imagen, label, tamano_max=(600, 500)):
@@ -394,6 +469,344 @@ class InterfazImagenDigital:
             widget.destroy()
         
         self.actualizar_layout('simple')
+    
+    def separar_canales(self):
+        """Separa y visualiza los canales RGB de la imagen"""
+        if self.imagen_original is None:
+            messagebox.showwarning("Advertencia", "Primero carga una imagen")
+            return
+        
+        if len(self.imagen_original.shape) != 3:
+            messagebox.showwarning("Advertencia", "La imagen debe ser a color (RGB)")
+            return
+        
+        try:
+            canales = separar_canales_rgb_visualizar(self.imagen_original)
+            
+            # Crear ventana con los canales
+            ventana = tk.Toplevel(self.root)
+            ventana.title("Separación de Canales RGB")
+            ventana.geometry("1200x800")
+            
+            fig = Figure(figsize=(12, 8))
+            
+            # Canal Rojo
+            ax1 = fig.add_subplot(2, 3, 1)
+            ax1.imshow(canales['r_bn'], cmap='gray')
+            ax1.set_title('Canal R (Blanco y Negro)', fontweight='bold')
+            ax1.axis('off')
+            
+            ax2 = fig.add_subplot(2, 3, 4)
+            ax2.imshow(cv2.cvtColor(canales['r_color'], cv2.COLOR_BGR2RGB))
+            ax2.set_title('Canal R (Coloreado)', fontweight='bold')
+            ax2.axis('off')
+            
+            # Canal Verde
+            ax3 = fig.add_subplot(2, 3, 2)
+            ax3.imshow(canales['g_bn'], cmap='gray')
+            ax3.set_title('Canal G (Blanco y Negro)', fontweight='bold')
+            ax3.axis('off')
+            
+            ax4 = fig.add_subplot(2, 3, 5)
+            ax4.imshow(cv2.cvtColor(canales['g_color'], cv2.COLOR_BGR2RGB))
+            ax4.set_title('Canal G (Coloreado)', fontweight='bold')
+            ax4.axis('off')
+            
+            # Canal Azul
+            ax5 = fig.add_subplot(2, 3, 3)
+            ax5.imshow(canales['b_bn'], cmap='gray')
+            ax5.set_title('Canal B (Blanco y Negro)', fontweight='bold')
+            ax5.axis('off')
+            
+            ax6 = fig.add_subplot(2, 3, 6)
+            ax6.imshow(cv2.cvtColor(canales['b_color'], cv2.COLOR_BGR2RGB))
+            ax6.set_title('Canal B (Coloreado)', fontweight='bold')
+            ax6.axis('off')
+            
+            fig.tight_layout()
+            
+            canvas = FigureCanvasTkAgg(fig, master=ventana)
+            canvas.draw()
+            canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+            
+        except Exception as e:
+            messagebox.showerror("Error", f"Error al separar canales: {str(e)}")
+    
+    def convertir_modelo(self, modelo):
+        """Convierte la imagen a diferentes modelos de color"""
+        if self.imagen_original is None:
+            messagebox.showwarning("Advertencia", "Primero carga una imagen")
+            return
+        
+        if len(self.imagen_original.shape) != 3:
+            messagebox.showwarning("Advertencia", "La imagen debe ser a color (RGB)")
+            return
+        
+        try:
+            if modelo == 'CMY':
+                img_convertida = rgb_a_cmy(self.imagen_original)
+                titulo = "Modelo CMY"
+                nombres_canales = ['Cyan', 'Magenta', 'Yellow']
+            elif modelo == 'YIQ':
+                img_convertida = rgb_a_yiq(self.imagen_original)
+                titulo = "Modelo YIQ"
+                nombres_canales = ['Y (Luminancia)', 'I (Crominancia)', 'Q (Crominancia)']
+            elif modelo == 'HSI':
+                img_convertida = rgb_a_hsi(self.imagen_original)
+                titulo = "Modelo HSI"
+                nombres_canales = ['Hue (Matiz)', 'Saturation (Saturación)', 'Intensity (Intensidad)']
+            elif modelo == 'HSV':
+                img_convertida = rgb_a_hsv(self.imagen_original)
+                titulo = "Modelo HSV"
+                nombres_canales = ['Hue (Matiz)', 'Saturation (Saturación)', 'Value (Valor)']
+            
+            # Crear ventana de visualización
+            ventana = tk.Toplevel(self.root)
+            ventana.title(f"Conversión a {modelo}")
+            ventana.geometry("1200x600")
+            
+            fig = Figure(figsize=(12, 6))
+            
+            # Imagen original
+            ax1 = fig.add_subplot(2, 4, 1)
+            ax1.imshow(cv2.cvtColor(self.imagen_original, cv2.COLOR_BGR2RGB))
+            ax1.set_title('Original RGB', fontweight='bold')
+            ax1.axis('off')
+            
+            # Imagen convertida
+            ax2 = fig.add_subplot(2, 4, 2)
+            # Para mostrar, convertir de vuelta a RGB si es necesario
+            if modelo in ['CMY', 'YIQ']:
+                ax2.imshow(img_convertida)
+            else:
+                ax2.imshow(cv2.cvtColor(img_convertida, cv2.COLOR_HSV2RGB))
+            ax2.set_title(f'{titulo} (Compuesto)', fontweight='bold')
+            ax2.axis('off')
+            
+            # Separar canales
+            c1, c2, c3 = cv2.split(img_convertida)
+            
+            # Canal 1
+            ax3 = fig.add_subplot(2, 4, 5)
+            ax3.imshow(c1, cmap='gray')
+            ax3.set_title(nombres_canales[0], fontweight='bold')
+            ax3.axis('off')
+            
+            # Canal 2
+            ax4 = fig.add_subplot(2, 4, 6)
+            ax4.imshow(c2, cmap='gray')
+            ax4.set_title(nombres_canales[1], fontweight='bold')
+            ax4.axis('off')
+            
+            # Canal 3
+            ax5 = fig.add_subplot(2, 4, 7)
+            ax5.imshow(c3, cmap='gray')
+            ax5.set_title(nombres_canales[2], fontweight='bold')
+            ax5.axis('off')
+            
+            fig.tight_layout()
+            
+            canvas = FigureCanvasTkAgg(fig, master=ventana)
+            canvas.draw()
+            canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+            
+        except Exception as e:
+            messagebox.showerror("Error", f"Error al convertir a {modelo}: {str(e)}")
+    
+    def mostrar_histograma_grises(self):
+        """Muestra el histograma de la imagen en escala de grises"""
+        if self.imagen_original is None:
+            messagebox.showwarning("Advertencia", "Primero carga una imagen")
+            return
+        
+        try:
+            # Convertir a grises si es necesario
+            if self.imagen_grises is not None:
+                img_grises = self.imagen_grises
+            else:
+                img_grises = rgb_a_grises(self.imagen_original)
+            
+            hist = calcular_histograma(img_grises)
+            
+            # Limpiar frame
+            for widget in self.frame_histograma.winfo_children():
+                widget.destroy()
+            
+            fig = Figure(figsize=(10, 3), dpi=80)
+            ax = fig.add_subplot(111)
+            ax.plot(hist, color='blue')
+            ax.set_title('Histograma de Intensidad (Escala de Grises)', fontweight='bold')
+            ax.set_xlabel('Intensidad (0-255)')
+            ax.set_ylabel('Frecuencia (Número de píxeles)')
+            ax.grid(True, alpha=0.3)
+            
+            fig.tight_layout()
+            
+            self.actualizar_layout('con_histograma')
+            self.mostrar_imagen(img_grises, self.label_original)
+            self.mostrar_imagen(img_grises, self.label_procesada)
+            
+            canvas = FigureCanvasTkAgg(fig, master=self.frame_histograma)
+            canvas.draw()
+            canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+            
+        except Exception as e:
+            messagebox.showerror("Error", f"Error al mostrar histograma: {str(e)}")
+    
+    def mostrar_histogramas_rgb(self):
+        """Muestra los histogramas separados de cada canal RGB"""
+        if self.imagen_original is None:
+            messagebox.showwarning("Advertencia", "Primero carga una imagen")
+            return
+        
+        if len(self.imagen_original.shape) != 3:
+            messagebox.showwarning("Advertencia", "La imagen debe ser a color (RGB)")
+            return
+        
+        try:
+            hists = calcular_histogramas_rgb(self.imagen_original)
+            
+            # Crear ventana
+            ventana = tk.Toplevel(self.root)
+            ventana.title("Histogramas RGB")
+            ventana.geometry("1000x700")
+            
+            fig = Figure(figsize=(10, 7))
+            
+            # Imagen original
+            ax1 = fig.add_subplot(2, 2, 1)
+            ax1.imshow(cv2.cvtColor(self.imagen_original, cv2.COLOR_BGR2RGB))
+            ax1.set_title('Imagen Original', fontweight='bold')
+            ax1.axis('off')
+            
+            # Histograma R
+            ax2 = fig.add_subplot(2, 2, 2)
+            ax2.plot(hists['R'], color='red', label='Canal R')
+            ax2.set_title('Histograma Canal Rojo', fontweight='bold')
+            ax2.set_xlabel('Intensidad')
+            ax2.set_ylabel('Frecuencia')
+            ax2.legend()
+            ax2.grid(True, alpha=0.3)
+            
+            # Histograma G
+            ax3 = fig.add_subplot(2, 2, 3)
+            ax3.plot(hists['G'], color='green', label='Canal G')
+            ax3.set_title('Histograma Canal Verde', fontweight='bold')
+            ax3.set_xlabel('Intensidad')
+            ax3.set_ylabel('Frecuencia')
+            ax3.legend()
+            ax3.grid(True, alpha=0.3)
+            
+            # Histograma B
+            ax4 = fig.add_subplot(2, 2, 4)
+            ax4.plot(hists['B'], color='blue', label='Canal B')
+            ax4.set_title('Histograma Canal Azul', fontweight='bold')
+            ax4.set_xlabel('Intensidad')
+            ax4.set_ylabel('Frecuencia')
+            ax4.legend()
+            ax4.grid(True, alpha=0.3)
+            
+            fig.tight_layout()
+            
+            canvas = FigureCanvasTkAgg(fig, master=ventana)
+            canvas.draw()
+            canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+            
+        except Exception as e:
+            messagebox.showerror("Error", f"Error al mostrar histogramas RGB: {str(e)}")
+    
+    def mostrar_propiedades_histograma(self):
+        """Muestra las propiedades estadísticas del histograma"""
+        if self.imagen_original is None:
+            messagebox.showwarning("Advertencia", "Primero carga una imagen")
+            return
+        
+        try:
+            # Usar grises si existe
+            if self.imagen_grises is not None:
+                img_grises = self.imagen_grises
+            else:
+                img_grises = rgb_a_grises(self.imagen_original)
+            
+            hist = calcular_histograma(img_grises)
+            props = propiedades_histograma(hist)
+            
+            if props is None:
+                messagebox.showerror("Error", "No se pudieron calcular las propiedades")
+                return
+            
+            # Crear ventana con propiedades
+            ventana = tk.Toplevel(self.root)
+            ventana.title("Propiedades del Histograma")
+            ventana.geometry("900x700")
+            
+            # Frame superior - Imagen y tabla
+            frame_sup = ttk.Frame(ventana, padding=10)
+            frame_sup.pack(fill=tk.BOTH, expand=True)
+            
+            # Imagen
+            frame_img = ttk.LabelFrame(frame_sup, text="Imagen", padding=10)
+            frame_img.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 5))
+            
+            img_rgb = cv2.cvtColor(img_grises, cv2.COLOR_GRAY2RGB)
+            img_pil = Image.fromarray(img_rgb)
+            img_pil = img_pil.resize((300, 300), Image.LANCZOS)
+            img_tk = ImageTk.PhotoImage(img_pil)
+            label_img = ttk.Label(frame_img, image=img_tk)
+            label_img.image = img_tk
+            label_img.pack()
+            
+            # Tabla de propiedades
+            frame_props = ttk.LabelFrame(frame_sup, text="Propiedades Estadísticas", padding=10)
+            frame_props.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=(5, 0))
+            
+            # Crear tabla
+            columns = ('Propiedad', 'Valor')
+            tree = ttk.Treeview(frame_props, columns=columns, show='headings', height=10)
+            
+            tree.heading('Propiedad', text='Propiedad')
+            tree.heading('Valor', text='Valor')
+            
+            tree.column('Propiedad', width=200)
+            tree.column('Valor', width=150)
+            
+            # Insertar datos
+            tree.insert('', tk.END, values=('Media', f"{props['media']:.2f}"))
+            tree.insert('', tk.END, values=('Mediana', f"{props['mediana']}"))
+            tree.insert('', tk.END, values=('Moda', f"{props['moda']}"))
+            tree.insert('', tk.END, values=('Varianza', f"{props['varianza']:.2f}"))
+            tree.insert('', tk.END, values=('Desviación Estándar', f"{props['desviacion_estandar']:.2f}"))
+            tree.insert('', tk.END, values=('Valor Mínimo', f"{props['minimo']}"))
+            tree.insert('', tk.END, values=('Valor Máximo', f"{props['maximo']}"))
+            tree.insert('', tk.END, values=('Rango', f"{props['rango']}"))
+            tree.insert('', tk.END, values=('Total Píxeles', f"{props['total_pixeles']:,}"))
+            
+            tree.pack(fill=tk.BOTH, expand=True)
+            
+            # Frame inferior - Histograma
+            frame_inf = ttk.LabelFrame(ventana, text="Histograma", padding=10)
+            frame_inf.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+            
+            fig = Figure(figsize=(8, 3))
+            ax = fig.add_subplot(111)
+            ax.plot(hist, color='blue')
+            ax.axvline(x=props['media'], color='red', linestyle='--', label=f"Media: {props['media']:.1f}")
+            ax.axvline(x=props['mediana'], color='green', linestyle='--', label=f"Mediana: {props['mediana']}")
+            ax.axvline(x=props['moda'], color='orange', linestyle='--', label=f"Moda: {props['moda']}")
+            ax.set_title('Histograma con Medidas de Tendencia Central', fontweight='bold')
+            ax.set_xlabel('Intensidad')
+            ax.set_ylabel('Frecuencia')
+            ax.legend()
+            ax.grid(True, alpha=0.3)
+            
+            fig.tight_layout()
+            
+            canvas = FigureCanvasTkAgg(fig, master=frame_inf)
+            canvas.draw()
+            canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+            
+        except Exception as e:
+            messagebox.showerror("Error", f"Error al mostrar propiedades: {str(e)}")
 
 
 def main():

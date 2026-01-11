@@ -29,6 +29,7 @@ class InterfazMorfologia:
         
         # Variables para la imagen
         self.imagen = None
+        self.imagen_original_cargada = None  # Guardar la imagen original sin modificar
         self.imagen_resultado = None  # Guardar el resultado de la última operación
         self.nombre_operacion = None  # Nombre de la última operación aplicada
         self.tipo_imagen = None  # 'binaria' o 'grises'
@@ -385,6 +386,9 @@ class InterfazMorfologia:
                 messagebox.showerror("Error", "No se pudo cargar la imagen")
                 return
             
+            # Guardar copia de la imagen original
+            self.imagen_original_cargada = self.imagen.copy()
+            
             # Detectar automáticamente el tipo de imagen
             valores_unicos = np.unique(self.imagen)
             num_valores = len(valores_unicos)
@@ -405,6 +409,9 @@ class InterfazMorfologia:
                 text=f"{nombre_archivo}\n{self.imagen.shape[1]}x{self.imagen.shape[0]} px\n[{tipo_texto}] - {info_extra}",
                 fg=color_tipo
             )
+            
+            # Mostrar solo la imagen cargada (una vez)
+            self.visualizar_imagen_inicial()
             
             messagebox.showinfo(
                 "Éxito", 
@@ -449,10 +456,11 @@ class InterfazMorfologia:
         try:
             umbral = self.umbral_binario.get()
             
-            # Aplicar umbralización
-            _, imagen_binaria = cv2.threshold(self.imagen, umbral, 255, cv2.THRESH_BINARY)
+            # Aplicar umbralización sobre la imagen original cargada
+            imagen_fuente = self.imagen_original_cargada if self.imagen_original_cargada is not None else self.imagen
+            _, imagen_binaria = cv2.threshold(imagen_fuente, umbral, 255, cv2.THRESH_BINARY)
             
-            # Actualizar la imagen actual
+            # Actualizar la imagen actual (para trabajar con ella)
             self.imagen = imagen_binaria
             self.tipo_imagen = 'binaria'
             
@@ -462,7 +470,7 @@ class InterfazMorfologia:
                 fg='#c0392b'
             )
             
-            # Visualizar el resultado
+            # Visualizar el resultado (original vs binaria)
             self.visualizar_conversion_binaria(imagen_binaria, umbral)
             
             messagebox.showinfo("Éxito", f"Imagen convertida a binaria con umbral {umbral}")
@@ -651,16 +659,19 @@ class InterfazMorfologia:
                 messagebox.showerror("Error", f"Operación '{operacion}' no disponible para {tipo_texto}")
                 return
             
-            # Aplicar la operación
-            resultado = diccionario_ops[operacion](self.imagen)
+            # Usar siempre la imagen original cargada para aplicar las operaciones
+            imagen_para_procesar = self.imagen_original_cargada if self.imagen_original_cargada is not None else self.imagen
+            
+            # Aplicar la operación sobre la imagen original
+            resultado = diccionario_ops[operacion](imagen_para_procesar)
             
             # Guardar el resultado y el nombre de la operación
             self.imagen_resultado = resultado
             self.nombre_operacion = operacion.replace(' ', '_').replace('ó', 'o').replace('é', 'e').replace('í', 'i')
             
-            # Visualizar
+            # Visualizar (siempre mostrar la original cargada vs el resultado)
             self.visualizar_resultado_simple(
-                self.imagen, 
+                imagen_para_procesar, 
                 resultado, 
                 f"{tipo_texto} - {operacion}", 
                 operacion
@@ -696,12 +707,15 @@ class InterfazMorfologia:
         for widget in self.frame_canvas.winfo_children():
             widget.destroy()
         
+        # Usar la imagen original cargada como referencia
+        imagen_original = self.imagen_original_cargada if self.imagen_original_cargada is not None else self.imagen
+        
         # Crear figura de matplotlib
         fig, axes = plt.subplots(1, 3, figsize=(14, 5))
         fig.suptitle(f'Conversión a Imagen Binaria (Umbral: {umbral})', fontsize=14, fontweight='bold')
         
         # Imagen original
-        axes[0].imshow(self.imagen, cmap='gray')
+        axes[0].imshow(imagen_original, cmap='gray')
         axes[0].set_title('Imagen Original', fontsize=12, fontweight='bold')
         axes[0].axis('off')
         
@@ -711,13 +725,36 @@ class InterfazMorfologia:
         axes[1].axis('off')
         
         # Histograma con línea de umbral
-        axes[2].hist(self.imagen.ravel(), bins=256, range=(0, 256), color='gray', alpha=0.7)
+        axes[2].hist(imagen_original.ravel(), bins=256, range=(0, 256), color='gray', alpha=0.7)
         axes[2].axvline(x=umbral, color='red', linestyle='--', linewidth=2, label=f'Umbral: {umbral}')
         axes[2].set_title('Histograma y Umbral', fontsize=12, fontweight='bold')
         axes[2].set_xlabel('Intensidad')
         axes[2].set_ylabel('Frecuencia')
         axes[2].legend()
         axes[2].grid(True, alpha=0.3)
+        
+        plt.tight_layout()
+        
+        # Integrar matplotlib en tkinter
+        canvas = FigureCanvasTkAgg(fig, master=self.frame_canvas)
+        canvas.draw()
+        canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+    
+    def visualizar_imagen_inicial(self):
+        """Visualiza solo la imagen cargada (sin comparación)"""
+        # Limpiar el frame anterior
+        for widget in self.frame_canvas.winfo_children():
+            widget.destroy()
+        
+        # Crear figura de matplotlib con una sola imagen centrada
+        fig, ax = plt.subplots(1, 1, figsize=(12, 5))
+        tipo_texto = "Binaria" if self.tipo_imagen == 'binaria' else "Escala de Grises"
+        fig.suptitle(f'Imagen Cargada - {tipo_texto}', fontsize=14, fontweight='bold')
+        
+        # Mostrar imagen
+        ax.imshow(self.imagen, cmap='gray')
+        ax.set_title('Imagen Original', fontsize=12, fontweight='bold')
+        ax.axis('off')
         
         plt.tight_layout()
         
