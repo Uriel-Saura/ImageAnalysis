@@ -136,15 +136,24 @@ class InterfazPrincipal:
         )
         
         # ===== FILA 3 =====
-        # BOTON 7: HEATMAP (Columna 0, centrado con columnspan)
+        # BOTON 7: HEATMAP (Columna 0)
         self.crear_boton_grid(
             botones_frame,
             "7. Mapas de Calor",
             "Generación y visualización de heatmaps",
             '#c0392b',
             lambda: self.abrir_modulo('HeatMap'),
-            3, 0,
-            columnspan=2
+            3, 0
+        )
+        
+        # BOTON 8: OCR (Columna 1)
+        self.crear_boton_grid(
+            botones_frame,
+            "8. Reconocimiento de Texto (OCR)",
+            "Extracción de texto con preprocesamiento inteligente",
+            '#16a085',
+            lambda: self.abrir_modulo('Proyecto'),
+            3, 1
         )
         
         # Separador
